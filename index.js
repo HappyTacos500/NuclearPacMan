@@ -10,16 +10,16 @@
 // v 1.6 Wed 11-6-24 - Bombs working, fixed bug where pacman dies from a bomb while on PP status
 // v 1.5 Tuesday 11-5-24 - Bombs working. Blows up pacman or a wall if next to bomb
 
-// Jon's Pacman game ------------------------
+// Not Jon's Pacman game ------------------------
 
 // Configurable game components
-const NUM_ROWS = 10;  // 14
-const NUM_COLUMNS = 10;  // 30
+const NUM_ROWS = 14;  // 14
+const NUM_COLUMNS = 14;  // 30
 const WALL_PCT = .20;   // % of walls on board
 const SQUARE_SIZE = 50;  // pixel size of individual squares
 const NUM_GHOSTS = 5;   // number of ghosts to create on each level
 const GHOST_SMARTS = 80; // % of time ghost moves towards pacman during regular mode or away from pacman during pp mode
-const GHOST_RESPAWN_DELAY = 4;  // delay in seconds for dead ghosts to respawn
+const GHOST_RESPAWN_DELAY = 3;  // delay in seconds for dead ghosts to respawn
 const SAFE_ZONE_SIZE = 4; // rows/columns of safety in upper left corner when pacman spawns or respawns
 const GHOST_SPEED = 1;  // how often ghosts move in seconds
 const RESET_PLAYER_DELAY = 3; // seconds
@@ -37,6 +37,8 @@ const POISON_PERCENT = .4; // How ofen poison ghost drops poison
 const GHOST_TYPE_NORMAL = 0;
 const GHOST_TYPE_RABID = 1;
 const GHOST_TYPE_POISON = 2;
+
+const NUKE_BAR_WIDTH_MULTIPLIER = 4;
 
 // Global variables
 var current;    // pacman's current square
@@ -63,6 +65,11 @@ var poisonGhostCount = 0;
 var goodBombTimerID;
 var cancelGoodBombTimerID;
 
+var currentUniverse = 1;
+var nukeBarFillPrecent = 0;
+
+var portalSquare;
+
 // General Constants ----------------------------
 
 // keyboard codes
@@ -71,6 +78,8 @@ var ARROW_LEFT = 37;
 var ARROW_UP = 38;
 var ARROW_RIGHT = 39;
 var ARROW_DOWN = 40;
+var KEY_n = 78;
+var KEY_o = 79;
 
 // general constants to denote direction
 var RIGHT = 0;
@@ -82,25 +91,26 @@ const FAIL = 0;
 const SUCCESS = 1;
 
 // graphics
-var PACMAN_CLASSIC_RIGHT = "<img src='graphics/Pacman icon right.jpg'>";
-var PACMAN_CLASSIC_LEFT = "<img src='graphics/Pacman icon left.jpg'>";
-var PACMAN_CLASSIC_UP = "<img src='graphics/Pacman icon up.jpg'>";
-var PACMAN_CLASSIC_DOWN = "<img src='graphics/Pacman icon down.jpg'>";
-var PACMAN_CLASSIC_RIGHT_PP = "<img src='graphics/Pacman icon right PP.jpg'>";
-var PACMAN_CLASSIC_LEFT_PP = "<img src='graphics/Pacman icon left PP.jpg'>";
-var PACMAN_CLASSIC_UP_PP = "<img src='graphics/Pacman icon up PP.jpg'>";
-var PACMAN_CLASSIC_DOWN_PP = "<img src='graphics/Pacman icon down PP.jpg'>";
-var ICON_WALL = "<img src='graphics/wallIcon.jpg'>";
-var ICON_PELLET = "<img src='graphics/PelletIcon.jpg'>";
-var ICON_BOMB = "<img src='graphics/BombIcon1.jpg'>";
-var ICON_GOOD_BOMB = "<img src='graphics/GoodBombIcon.jpg'>";
-var ICON_POWER_PELLET = "<img src='graphics/PowerPellet.jpg'>";
-var ICON_TUNNEL = "<img src='graphics/tunnel.jpg'>";
-var ICON_POISON = "<img src='graphics/poison.jpg'>";
+var PACMAN_CLASSIC_RIGHT = "<img src='graphics/Pacman icon right.png'>";
+var PACMAN_CLASSIC_LEFT = "<img src='graphics/Pacman icon left.png'>";
+var PACMAN_CLASSIC_UP = "<img src='graphics/Pacman icon up.png'>";
+var PACMAN_CLASSIC_DOWN = "<img src='graphics/Pacman icon down.png'>";
+var PACMAN_CLASSIC_RIGHT_PP = "<img src='graphics/Pacman icon right PP.png'>";
+var PACMAN_CLASSIC_LEFT_PP = "<img src='graphics/Pacman icon left PP.png'>";
+var PACMAN_CLASSIC_UP_PP = "<img src='graphics/Pacman icon up PP.png'>";
+var PACMAN_CLASSIC_DOWN_PP = "<img src='graphics/Pacman icon down PP.png'>";
+var ICON_WALL = "<img src='graphics/wallIcon.png'>";
+var ICON_PELLET = "<img src='graphics/PelletIcon.png'>";
+var ICON_BOMB = "<img src='graphics/BombIcon1.png'>";
+var ICON_GOOD_BOMB = "<img src='graphics/GoodBombIcon.png'>";
+var ICON_POWER_PELLET = "<img src='graphics/PowerPellet.png'>";
+var ICON_TUNNEL = "<img src='graphics/tunnel.png'>";
+var ICON_POISON = "<img src='graphics/poison.png'>";
+var ICON_PORTAL = "<img src='graphics/portal.png'>";
 
-var ICON_GHOST = "<img src='graphics/blueGhost.jpg'>";
-var ICON_GHOST_RABID = "<img src='graphics/rabidGhost.jpg'>"
-var ICON_GHOST_POISON = "<img src='graphics/poisonGhost.jpg'>"
+var ICON_GHOST = "<img src='graphics/blueGhost.png'>";
+var ICON_GHOST_RABID = "<img src='graphics/rabidGhost.png'>"
+var ICON_GHOST_POISON = "<img src='graphics/poisonGhost.png'>"
 
 
 const GAME_MODE_POWER_OFF = 0;
@@ -156,6 +166,8 @@ createItems();
 
 createTunnel();
 
+portalSquare = placePortal();
+
 drawInitialBoard();
 
 startGoodBombTimer();
@@ -165,6 +177,8 @@ setTimeout( spawnAllGhosts, 2000);
 updateScoreboard();
 
 respawnPacmanTimer();
+
+setInterval(nukeBarTick, 150)
 
 // End Driver section
 //
@@ -177,6 +191,9 @@ respawnPacmanTimer();
 // ---------------------------------------------------------
 
 // Intercept keydown event
+function debugAction() {
+  // resetBoard();
+}
 
 function checkKey(evt)
 {
@@ -218,6 +235,7 @@ function updateScoreboard()
   document.getElementById("livesVariable").innerHTML = lives;
   document.getElementById("scoreVariable").innerHTML = score;
   document.getElementById("levelVariable").innerHTML = level;
+  document.getElementById("universeVariable").innerHTML = currentUniverse;
   document.getElementById("bombsVariable").innerHTML = bombCount;
 
   document.getElementById("regGhostCount").innerHTML = regGhostCount;
@@ -385,6 +403,20 @@ function createTunnel()
 
 // --------------------------------------------------
 
+function placePortal() {
+  var portalPos = Math.floor(Math.random() * (NUM_ROWS*NUM_COLUMNS)); // select a random square for the portal
+
+  while (pellets[portalPos] == 0) { // Make sure the square to put the portal in is clear and keep moving it until it is
+    portalPos = Math.floor(Math.random() * (NUM_ROWS*NUM_COLUMNS));
+  }
+
+  pellets[portalPos] = 0;
+  totalPellets -= 1;
+  return portalPos; // return the new value
+} // end function placePortal
+
+// --------------------------------------------------
+
 function drawInitialBoard()
 {
 
@@ -417,6 +449,12 @@ function drawInitialBoard()
                 // console.log("Tunnel found at " + i);
                 squares[i].innerHTML = ICON_TUNNEL;
               }
+              else
+              {
+                if (i == portalSquare){
+                  squares[i].innerHTML = ICON_PORTAL;
+                }
+              }
           }
         } // end else
     } // end else
@@ -425,6 +463,7 @@ function drawInitialBoard()
 
   } // end for loop
 
+  console.log(portalSquare);
 }  // end function drawInitialBoard
 
 // ---------------------------------------------------------
@@ -442,6 +481,7 @@ function resetBoard()
     regGhostCount = 0;
     rabidGhostCount = 0;
     poisonGhostCount = 0;
+    nukeBarFillPrecent = 0;
 
     // turn off PP if on
     if (myPowerPelletTimerVar != -1)
@@ -458,6 +498,8 @@ function resetBoard()
 
     createTunnel();
 
+    portalSquare = placePortal();
+
     drawInitialBoard();
 
     spawnAllGhosts();
@@ -466,6 +508,47 @@ function resetBoard()
 
     // respawn pacman
     setTimeout( respawnPacmanTimer, RESET_PLAYER_DELAY*1000);
+
+}
+
+function resetBoardUniverse()
+{
+    current = -1;
+    totalPellets = 0;
+    pelletsEaten = 0;
+    numPowerPelletsEaten = 0;
+    numPowerPellets = POWER_PELLETS_START_COUNT;
+    gameMode = GAME_MODE_POWER_OFF;
+    regGhostCount = 0;
+    rabidGhostCount = 0;
+    poisonGhostCount = 0;
+    currentUniverse++;
+
+    // turn off PP if on
+    if (myPowerPelletTimerVar != -1)
+    {
+      clearTimeout(myPowerPelletTimerVar);
+      myPowerPelletTimerVar = -1;
+    }
+
+    clearGhostTimers();
+
+    buildWallsAndPellets();
+
+    createItems();
+
+    createTunnel();
+
+    portalSquare = placePortal();
+
+    drawInitialBoard();
+
+    spawnAllGhosts();
+
+    updateScoreboard();
+
+    // respawn pacman
+    respawnPacmanTimer();
 
 }
 
@@ -584,6 +667,10 @@ function redrawBoardPacman(oldSquare, newSquare)
       // console.log("RedrawBoardPacman blanked cell " + oldSquare);
 
     } // finish else - old square handled
+    
+    if (oldSquare == portalSquare) {
+      squares[oldSquare].innerHTML = ICON_PORTAL;
+    }
 
     // deal with new square
     if ((current != OFF_THE_BOARD) && (gameMode != GAME_MODE_OVER))
@@ -638,12 +725,30 @@ function checkForPellets()
 
 // -------------------------------------------------------------
 
+function checkForPortal(square) {
+  if (square == portalSquare) {
+    return SUCCESS;
+  } else {
+    return FAIL;
+  }
+}
+
+// -------------------------------------------------------------
+
 function resolvePacMan(direction)
 {
   var ghostStatus;
 
   switch(direction)
   {
+      case KEY_n:
+        dropNuke();
+        break;
+
+      case KEY_o:
+        debugAction();
+        break;
+
       case SPACE_BAR_KEY:
         // console.log ("Space Bar pressed");
 
@@ -676,6 +781,10 @@ function resolvePacMan(direction)
       if ( (((current + 1) % NUM_COLUMNS) != 0) && (walls[current+1] == 0) )
       {
           current++;
+
+          if (checkForPortal(current)) {
+            resetBoardUniverse();
+          }
 
           if (processPacmanTunnel())
           {
@@ -728,6 +837,10 @@ function resolvePacMan(direction)
       {
         current--;
 
+        if (checkForPortal(current)) {
+          resetBoardUniverse();
+        }
+
         if (processPacmanTunnel())
         {
           pacmanIcon = (gameMode == GAME_MODE_POWER_ON) ? PACMAN_CLASSIC_LEFT_PP : PACMAN_CLASSIC_LEFT;
@@ -777,6 +890,10 @@ function resolvePacMan(direction)
       {
         current = current + NUM_COLUMNS;
 
+        if (checkForPortal(current)) {
+          resetBoardUniverse();
+        }
+
         if (processPacmanTunnel())
         {
             pacmanIcon = (gameMode == GAME_MODE_POWER_ON) ? PACMAN_CLASSIC_DOWN_PP : PACMAN_CLASSIC_DOWN;
@@ -825,6 +942,10 @@ function resolvePacMan(direction)
       if ((current >= NUM_COLUMNS) && (walls[current-NUM_COLUMNS] == 0))
       {
         current = current - NUM_COLUMNS;
+
+        if (checkForPortal(current)) {
+          resetBoardUniverse();
+        }
 
         if (processPacmanTunnel())
         {
@@ -984,6 +1105,28 @@ function eatGhosts()
 
 } // end function eatGhosts
 
+function killAllGhosts()
+{
+    // console.log("Eat ghost called");
+
+  for (var i=0; i<ghosts.length; i++)
+  {
+    // console.log("Found a ghost to Eat " + i);
+
+    ghostsEaten++;
+
+    updateScoreboard();
+
+    ghosts[i].squareNum = OFF_THE_BOARD;
+    // console.log("Ate Ghost " + i + " in squarenum " + current + " total ghosts eaten is " + ghostsEaten + "  total ghosts created is " + ghostsCreated + " at " + (new Date()));
+
+    // save respawn id in case need to clear out later
+    ghosts[i].respawnId = setTimeout( ghostRespawnTimer, GHOST_RESPAWN_DELAY *1000, ghosts[i].ghost_type);
+
+  }  // end for loop
+
+} // end function eatGhosts
+
 // ----------------------------------------------------------------
 
 function myPowerPelletTimer()
@@ -1033,6 +1176,19 @@ function dropBomb(pos)
     // create bomb onto array
     bombs.push({squareNum:pos, timerID: myVar});
 
+}
+
+function dropNuke() {
+  if (nukeBarFillPrecent == 100) {
+    nukeBarFillPrecent = 0;
+    killAllGhosts();
+    for (i=0; i<NUM_ROWS*NUM_COLUMNS; i++) {
+      document.querySelectorAll('.square')[i].innerHTML = "";
+    }
+    drawInitialBoard();
+    document.querySelectorAll('.square')[current].innerHTML = pacmanIcon;
+    setTimeout(randomSpawnGhost, GHOST_RESPAWN_DELAY*1000);
+  }
 }
 
 // end function dropBomb -----------------------------------------
@@ -1327,6 +1483,25 @@ function spawnAllGhosts()
     }
 
 }  // end function spawnAllGhosts
+
+function randomSpawnGhost(){
+  var safe = false;
+  var pos;
+
+  while (safe == false)
+  {
+      pos = Math.floor(Math.random() * NUM_ROWS*NUM_COLUMNS);
+
+      // check function returns true if ghost in safetey zone
+      if (!checkIfGhostInSafetyZone(pos, SAFE_ZONE_SIZE) || walls[pos] == 1 || pos == current) {
+        safe = false;
+      } else {
+        safe = true;
+      }
+  }
+
+  spawnGhost(pos);
+}
 
 // ---------------------------------------------------
 // spawn a single ghost in a square or near it
@@ -1700,6 +1875,10 @@ function redrawBoardGhost(ghostId, oldSquare)
         } // end check for poison
 
     } // end check for bomb
+
+    if (oldSquare == portalSquare) { // check for portal in old square
+      squares[oldSquare].innerHTML = ICON_PORTAL;
+    }
 
 }   // end function redrawBoardGhost
 
@@ -2156,3 +2335,20 @@ function myPoisonTimer(ghostId,squareNum,myPoisonCounter)
 // -------------------------------------------------
 
 // ************************************************************************
+
+// Start additional gameplay functions
+
+function nukeBarTick() { // Update the nuke bar to show what precent it's at on the cooldown and if you can use it
+  if (nukeBarFillPrecent < 100) { // Check if the nuke bar precentage is less than 100 and increase it if so
+    nukeBarFillPrecent++;
+  }
+
+  // Set the nuke bar's width
+  document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
+  // Set the nuke bar's color
+  if (nukeBarFillPrecent < 100) {
+    document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
+  } else {
+    document.getElementById("nukeBar").style.backgroundColor = "#00ff00"
+  }
+}
