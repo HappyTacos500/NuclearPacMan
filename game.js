@@ -482,6 +482,7 @@ function resetBoard()
     rabidGhostCount = 0;
     poisonGhostCount = 0;
     nukeBarFillPrecent = 0;
+    score += 100;
 
     // turn off PP if on
     if (myPowerPelletTimerVar != -1)
@@ -1108,6 +1109,9 @@ function eatGhosts()
 function killAllGhosts()
 {
     // console.log("Eat ghost called");
+  for (var i=0; i<poison.length; i++) {
+    poison[i] = 0;
+  }
 
   for (var i=0; i<ghosts.length; i++)
   {
@@ -2350,5 +2354,9 @@ function nukeBarTick() { // Update the nuke bar to show what precent it's at on 
     document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
   } else {
     document.getElementById("nukeBar").style.backgroundColor = "#00ff00"
+  }
+
+  for (var i=0; i<ghosts.length; i++) {
+    console.log(ghosts[i].respawnId)
   }
 }
