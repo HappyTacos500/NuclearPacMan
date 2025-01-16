@@ -26,6 +26,13 @@ body {
   background-color: #00ff00;
 }
 
+#bossBar
+{
+  width: 0;
+  height: 50;
+  background-color: #ff0000;
+}
+
 /* Use the . because square is a class */
   .square {
     height: 50px;

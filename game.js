@@ -39,6 +39,10 @@ const GHOST_TYPE_RABID = 1;
 const GHOST_TYPE_POISON = 2;
 
 const NUKE_BAR_WIDTH_MULTIPLIER = 4;
+const BOSS_BAR_WIDTH = 400;
+
+const UNIVERSES_BETWEEN_BOSSES = 5;
+const STARTING_BOSS_HP = 3;
 
 // Global variables
 var current;    // pacman's current square
@@ -69,6 +73,9 @@ var currentUniverse = 1;
 var nukeBarFillPrecent = 0;
 
 var portalSquare;
+
+var bossHP = 0;
+var bossUniverse = false;
 
 // General Constants ----------------------------
 
@@ -112,6 +119,10 @@ var ICON_GHOST = "<img src='graphics/blueGhost.png'>";
 var ICON_GHOST_RABID = "<img src='graphics/rabidGhost.png'>"
 var ICON_GHOST_POISON = "<img src='graphics/poisonGhost.png'>"
 
+var BOSS_THEME = new Audio("sounds/bosstheme.mp3");
+var MAIN_THEME = new Audio("sounds/maintheme.mp3");
+BOSS_THEME.loop = true;
+MAIN_THEME.loop = true;
 
 const GAME_MODE_POWER_OFF = 0;
 const GAME_MODE_POWER_ON = 1;
@@ -153,6 +164,7 @@ cancelGoodBombTimerID = -1; // -1 when not in use
 document.onkeydown = checkKey;  // checkKey is function called when key pressed
 var pacmanIcon;   // stores which icon pacman should use based on direction
 
+document.getElementById("bossHud").style.visibility = "hidden";
 // ----------------------------------------------------
 // -----   Start Main Driver section  -----------------
 // ----------------------------------------------------
@@ -178,7 +190,9 @@ updateScoreboard();
 
 respawnPacmanTimer();
 
-setInterval(nukeBarTick, 150)
+setInterval(nukeBarTick, 150);
+
+MAIN_THEME.play();
 
 // End Driver section
 //
@@ -192,7 +206,7 @@ setInterval(nukeBarTick, 150)
 
 // Intercept keydown event
 function debugAction() {
-  // resetBoard();
+  // fixSquares();
 }
 
 function checkKey(evt)
@@ -463,7 +477,58 @@ function drawInitialBoard()
 
   } // end for loop
 
-  console.log(portalSquare);
+}  // end function drawInitialBoard
+
+function fixSquares()
+{
+
+  var squares = document.querySelectorAll('.square');  // get squares
+  var ghostSquares = new Array();
+
+  ghosts.forEach(item => ghostSquares.push(item.squareNum));
+
+  for (var i=0; i<NUM_ROWS*NUM_COLUMNS; i++)  // loop through full board, check for wall or pellet
+  {
+    if (!ghostSquares.includes(i))
+      // check for wall first
+      if (walls[i] == 1)
+      {
+          squares[i].innerHTML = ICON_WALL;
+      }
+      else
+      {
+          // if no wall, check for pellet
+          if (pellets[i] == 1)
+          {
+            squares[i].innerHTML = ICON_PELLET;
+          }
+          else  // check for PP
+          {
+            if (powerPellets[i] == 1)
+            {
+              squares[i].innerHTML = ICON_POWER_PELLET;
+            }
+            else  // check for tunnels
+            {
+                if ((tunnel1num == i) || (tunnel2num == i))
+                {
+                  // console.log("Tunnel found at " + i);
+                  squares[i].innerHTML = ICON_TUNNEL;
+                }
+                else
+                {
+                  if (i == portalSquare){
+                    squares[i].innerHTML = ICON_PORTAL;
+                  }
+                }
+            }
+          } // end else
+      } // end else
+
+      // console.log("Found something is " + foundSomething + " in square " + i);
+
+    } // end for loop
+
 }  // end function drawInitialBoard
 
 // ---------------------------------------------------------
@@ -540,7 +605,22 @@ function resetBoardUniverse()
 
     createTunnel();
 
-    portalSquare = placePortal();
+    if (currentUniverse % UNIVERSES_BETWEEN_BOSSES == 0) {
+      portalSquare = -1
+      bossUniverse = true;
+      bossHP = STARTING_BOSS_HP + ((currentUniverse / UNIVERSES_BETWEEN_BOSSES) - 1);
+      document.getElementById("bossHud").style.visibility = "visible";
+      document.getElementById("bossBar").style.width = bossHP * (BOSS_BAR_WIDTH / (STARTING_BOSS_HP + ((currentUniverse / UNIVERSES_BETWEEN_BOSSES) - 1)));
+      MAIN_THEME.pause();
+      BOSS_THEME.play();
+    } else {
+      portalSquare = placePortal();
+      bossUniverse = false;
+      document.getElementById("bossHud").style.visibility = "hidden";
+      BOSS_THEME.pause();
+      MAIN_THEME.play();
+      BOSS_THEME.currentTime = 0;
+    }
 
     drawInitialBoard();
 
@@ -633,6 +713,8 @@ function respawnPacmanTimer()
 
   spawnPacman();
 
+  setTimeout(fixSquares, 1);
+
 } // end function respawnPacmanTimer
 
 // -----------------------------------------------------------------------------------
@@ -717,7 +799,7 @@ function checkForPellets()
 
     // console.log("Total pellets is " + totalPellets + " pellets eaten is " + pelletsEaten + "  power pellets eaten is " + numPowerPelletsEaten + " pp per screen is " + POWER_PELLETS_START_COUNT);
 
-    if ((pelletsEaten == totalPellets) && (numPowerPelletsEaten == POWER_PELLETS_START_COUNT))
+    if ((pelletsEaten == totalPellets) && (numPowerPelletsEaten == POWER_PELLETS_START_COUNT) && !bossUniverse)
     {
       // console.log("Current before reset is " + current);
       resetBoard();
@@ -1058,6 +1140,8 @@ function killPacman()
           clearTimeout(bombs[i].timerID);
       }
 
+      BOSS_THEME.pause();
+      MAIN_THEME.pause();
       document.getElementById("GameOverMessage").innerHTML = "Game Over!";
 
     }
@@ -1079,6 +1163,15 @@ function eatGhosts()
       // console.log("Found a ghost to Eat " + i);
 
       ghostsEaten++;
+
+      if (bossUniverse) {
+        bossHP -= 1;
+        document.getElementById("bossBar").style.width = bossHP * (BOSS_BAR_WIDTH / (STARTING_BOSS_HP + ((currentUniverse / 5) - 1)));
+        if (bossHP <= 0) {
+          resetBoardUniverse();
+          score += 200;
+        }
+      }
 
       if (ghosts[i].ghost_type == GHOST_TYPE_POISON)
       {
@@ -1139,6 +1232,49 @@ function myPowerPelletTimer()
     if (current != OFF_THE_BOARD)
       {
       gameMode = GAME_MODE_POWER_OFF;
+      if (numPowerPelletsEaten >= numPowerPellets) {
+        gameMode = GAME_MODE_OVER;
+        // Game Over stop all game components
+        for (var i=0; i<ghosts.length; i++)
+        {
+            clearInterval(ghosts[i].timerID);
+
+            if (ghosts[i].respawnId != -1)
+            {
+              clearTimeout(ghosts[i].respawnId);
+            }
+
+            // show last ghost that whacked pacman
+            if (ghosts[i].squareNum == current)
+            {
+              console.log("Last ghost that whacked pacman");
+              squares[current].innerHTML = getGhostIcon(ghosts[i].ghost_type);
+            }
+
+            // clear poison timers
+            if (ghosts[i].ghost_type == GHOST_TYPE_POISON)
+            {
+                for (var j=0; j<ghosts[i].poisonTimers.length;j++)
+                {
+                  if (ghosts[i].poisonTimers[j] != -1)
+                    clearTimeout(ghosts[i].poisonTimers[j]);
+                }
+            }
+
+            // ghosts[i].squareNum = -1;
+        } // end for loop
+
+        clearInterval(goodBombTimerID);
+
+        clearTimeout(cancelGoodBombTimerID);
+
+        for (var i=0; i<bombs.length; i++)
+        {
+            clearTimeout(bombs[i].timerID);
+        }
+
+        document.getElementById("GameOverMessage").innerHTML = "Game Over!";
+      }
       myPowerPelletTimerVar = -1;
 
       switch (pacmanIcon) {
@@ -2324,7 +2460,11 @@ function myPoisonTimer(ghostId,squareNum,myPoisonCounter)
                 squares[squareNum].innerHTML = ICON_POWER_PELLET;
             }
             else {
-              squares[squareNum].innerHTML = "";
+              if (squareNum == portalSquare) {
+                squares[squareNum].innerHTML = ICON_PORTAL;
+              } else {
+                squares[squareNum].innerHTML = "";
+              }
             }
         }
     }
@@ -2343,20 +2483,26 @@ function myPoisonTimer(ghostId,squareNum,myPoisonCounter)
 // Start additional gameplay functions
 
 function nukeBarTick() { // Update the nuke bar to show what precent it's at on the cooldown and if you can use it
-  if (nukeBarFillPrecent < 100) { // Check if the nuke bar precentage is less than 100 and increase it if so
-    nukeBarFillPrecent++;
-  }
+  if (!bossUniverse) {
+    if (nukeBarFillPrecent < 100) { // Check if the nuke bar precentage is less than 100 and increase it if so
+      nukeBarFillPrecent++;
+    }
 
-  // Set the nuke bar's width
-  document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
-  // Set the nuke bar's color
-  if (nukeBarFillPrecent < 100) {
-    document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
+    // Set the nuke bar's width
+    document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
+    // Set the nuke bar's color
+    if (nukeBarFillPrecent < 100) {
+      document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
+    } else {
+      document.getElementById("nukeBar").style.backgroundColor = "#00ff00"
+    }
+
+    for (var i=0; i<ghosts.length; i++) {
+      console.log(ghosts[i].respawnId)
+    }
   } else {
-    document.getElementById("nukeBar").style.backgroundColor = "#00ff00"
-  }
-
-  for (var i=0; i<ghosts.length; i++) {
-    console.log(ghosts[i].respawnId)
+    nukeBarFillPrecent = 1;
+    document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
+    document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
   }
 }
