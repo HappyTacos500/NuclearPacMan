@@ -119,8 +119,13 @@ var ICON_GHOST = "<img src='graphics/blueGhost.png'>";
 var ICON_GHOST_RABID = "<img src='graphics/rabidGhost.png'>"
 var ICON_GHOST_POISON = "<img src='graphics/poisonGhost.png'>"
 
-var BOSS_THEME = new Audio("sounds/bosstheme.mp3");
-var MAIN_THEME = new Audio("sounds/maintheme.mp3");
+var ICON_GHOST_BOSS = "<img src='graphics/bossGhost.png'>"
+
+var EXPLOSION_GIF = "<img src=\"graphics/explosion.gif\" />"
+
+var BOSS_THEME = new Audio("sounds/bosstheme.ogg");
+var MAIN_THEME = new Audio("sounds/maintheme.ogg");
+var EXPLOSION_SOUND = new Audio("sounds/explosion.ogg");
 BOSS_THEME.loop = true;
 MAIN_THEME.loop = true;
 
@@ -165,6 +170,9 @@ document.onkeydown = checkKey;  // checkKey is function called when key pressed
 var pacmanIcon;   // stores which icon pacman should use based on direction
 
 document.getElementById("bossHud").style.visibility = "hidden";
+document.getElementById("bossDisplayArea").style.visibility = "hidden";
+document.getElementById("explosionOverlay").innerHTML = "";
+document.getElementById("explosionOverlay").visibility = "hidden";
 // ----------------------------------------------------
 // -----   Start Main Driver section  -----------------
 // ----------------------------------------------------
@@ -192,6 +200,10 @@ respawnPacmanTimer();
 
 setInterval(nukeBarTick, 150);
 
+updateBossAnimation();
+
+setInterval(updateBossAnimation, 500);
+
 MAIN_THEME.play();
 
 // End Driver section
@@ -206,7 +218,7 @@ MAIN_THEME.play();
 
 // Intercept keydown event
 function debugAction() {
-  // fixSquares();
+
 }
 
 function checkKey(evt)
@@ -223,6 +235,20 @@ function checkKey(evt)
 } // end function checkKey
 
 // --------------------------------------------------------------------
+
+function updateBossAnimation()
+{
+  var bossSquares = document.querySelectorAll(".bossSquare"); // get all squares for the boss display
+
+  for (var i = 0; i < 10; i++) { // clear all of the squares
+    bossSquares[i].innerHTML = "";
+  }
+
+  var randomSquare = Math.floor(Math.random() * (9)); // pick a square for the boss ghost to draw on
+
+  bossSquares[randomSquare].innerHTML = ICON_GHOST_BOSS; // draw the boss ghost on that square
+
+} // end function updateBossAnimation
 
 function createBoard()
 {
@@ -610,6 +636,7 @@ function resetBoardUniverse()
       bossUniverse = true;
       bossHP = STARTING_BOSS_HP + ((currentUniverse / UNIVERSES_BETWEEN_BOSSES) - 1);
       document.getElementById("bossHud").style.visibility = "visible";
+      document.getElementById("bossDisplayArea").style.visibility = "visible";
       document.getElementById("bossBar").style.width = bossHP * (BOSS_BAR_WIDTH / (STARTING_BOSS_HP + ((currentUniverse / UNIVERSES_BETWEEN_BOSSES) - 1)));
       MAIN_THEME.pause();
       BOSS_THEME.play();
@@ -617,6 +644,7 @@ function resetBoardUniverse()
       portalSquare = placePortal();
       bossUniverse = false;
       document.getElementById("bossHud").style.visibility = "hidden";
+      document.getElementById("bossDisplayArea").style.visibility = "hidden";
       BOSS_THEME.pause();
       MAIN_THEME.play();
       BOSS_THEME.currentTime = 0;
@@ -713,7 +741,7 @@ function respawnPacmanTimer()
 
   spawnPacman();
 
-  setTimeout(fixSquares, 1);
+  setTimeout(fixSquares, 100);
 
 } // end function respawnPacmanTimer
 
@@ -1143,7 +1171,9 @@ function killPacman()
       BOSS_THEME.pause();
       MAIN_THEME.pause();
       document.getElementById("GameOverMessage").innerHTML = "Game Over!";
-
+      document.cookie = `score=${score.toString()}`;
+      window.location.replace("gameOver.html");
+      
     }
 
 }
@@ -1222,7 +1252,7 @@ function killAllGhosts()
 
   }  // end for loop
 
-} // end function eatGhosts
+} // end function killAllGhosts
 
 // ----------------------------------------------------------------
 
@@ -1274,6 +1304,8 @@ function myPowerPelletTimer()
         }
 
         document.getElementById("GameOverMessage").innerHTML = "Game Over!";
+        document.cookie = `score=${score.toString()}`;
+        window.location.replace("gameOver.html");
       }
       myPowerPelletTimerVar = -1;
 
@@ -1322,13 +1354,22 @@ function dropNuke() {
   if (nukeBarFillPrecent == 100) {
     nukeBarFillPrecent = 0;
     killAllGhosts();
-    for (i=0; i<NUM_ROWS*NUM_COLUMNS; i++) {
-      document.querySelectorAll('.square')[i].innerHTML = "";
-    }
-    drawInitialBoard();
-    document.querySelectorAll('.square')[current].innerHTML = pacmanIcon;
-    setTimeout(randomSpawnGhost, GHOST_RESPAWN_DELAY*1000);
+    EXPLOSION_SOUND.play();
+    document.getElementById("explosionOverlay").innerHTML = EXPLOSION_GIF;
+    document.getElementById("explosionOverlay").visibility = "visible";
+    setTimeout(refreshBoardAfterNuke, 950);
   }
+}
+
+function refreshBoardAfterNuke() {
+  document.getElementById("explosionOverlay").innerHTML = ""
+  document.getElementById("explosionOverlay").visibility = "hidden";
+  for (i=0; i<NUM_ROWS*NUM_COLUMNS; i++) {
+    document.querySelectorAll('.square')[i].innerHTML = "";
+  }
+  drawInitialBoard();
+  document.querySelectorAll('.square')[current].innerHTML = pacmanIcon;
+  setTimeout(randomSpawnGhost, GHOST_RESPAWN_DELAY*1000);
 }
 
 // end function dropBomb -----------------------------------------
@@ -2483,26 +2524,32 @@ function myPoisonTimer(ghostId,squareNum,myPoisonCounter)
 // Start additional gameplay functions
 
 function nukeBarTick() { // Update the nuke bar to show what precent it's at on the cooldown and if you can use it
-  if (!bossUniverse) {
-    if (nukeBarFillPrecent < 100) { // Check if the nuke bar precentage is less than 100 and increase it if so
-      nukeBarFillPrecent++;
-    }
-
-    // Set the nuke bar's width
-    document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
-    // Set the nuke bar's color
-    if (nukeBarFillPrecent < 100) {
-      document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
-    } else {
-      document.getElementById("nukeBar").style.backgroundColor = "#00ff00"
-    }
-
-    for (var i=0; i<ghosts.length; i++) {
-      console.log(ghosts[i].respawnId)
-    }
-  } else {
+  if (gameMode == GAME_MODE_OVER) {
     nukeBarFillPrecent = 1;
     document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
     document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
+  } else {
+    if (!bossUniverse) {
+      if (nukeBarFillPrecent < 100) { // Check if the nuke bar precentage is less than 100 and increase it if so
+        nukeBarFillPrecent++;
+      }
+
+      // Set the nuke bar's width
+      document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
+      // Set the nuke bar's color
+      if (nukeBarFillPrecent < 100) {
+        document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
+      } else {
+        document.getElementById("nukeBar").style.backgroundColor = "#00ff00"
+      }
+
+      for (var i=0; i<ghosts.length; i++) {
+        console.log(ghosts[i].respawnId)
+      }
+    } else {
+      nukeBarFillPrecent = 1;
+      document.getElementById("nukeBar").style.width = nukeBarFillPrecent * NUKE_BAR_WIDTH_MULTIPLIER;
+      document.getElementById("nukeBar").style.backgroundColor = "#ff0000"
+    }
   }
 }
