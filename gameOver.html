@@ -30,6 +30,9 @@
               }
 
               document.getElementById("scoreDisplay").innerHTML = `Score: ${getCookie("score")}`;
+              var GAME_OVER_THEME = new Audio("sounds/gameovertheme.ogg");
+              GAME_OVER_THEME.loop = true;
+              GAME_OVER_THEME.play();
               </script>
         </center>
     </body>
