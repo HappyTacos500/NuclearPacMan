@@ -1,0 +1,46 @@
+<html lang="en">            <!-- Declare the content language. -->
+<head>
+    <meta charset="utf-8">  <!-- Declare the document's character set. -->
+    <title>Nuclear Pac-Man</title>   <!-- Set the page title.  Will be displayed at the top of the browser window and in bookmarks.  -->
+    <link rel="stylesheet" href="game.css">    <!-- Include styles from game.css. -->
+</head>
+<body>
+  <main>
+    <div id="game">
+      <div id="explosionOverlay"></div>
+      <div>
+        <section id= "scoreboard">
+          SCORE: <span id="scoreVariable"></span> &nbsp &nbsp LIVES: <span id="livesVariable"></span>&nbsp &nbsp LEVEL: <span id="levelVariable"></span>&nbsp &nbsp UNIVERSE: <span id="universeVariable"></span>&nbsp &nbsp BOMBS: <span id="bombsVariable"></span>&nbsp &nbsp &nbsp &nbsp Ghosts: &nbspReg - <span id="regGhostCount"></span>&nbsp  Rabid - <span id="rabidGhostCount"></span>&nbsp  Poison - <span id="poisonGhostCount"></span>
+        </section>
+        <br>
+            <div id="board"></div>
+        <br>
+            <!-- <button type="button" onclick="test()">Click Me!</button> -->
+        <span id="GameOverMessage"></span>
+        <div id="bossDisplayArea">
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+          <div class="bossSquare"></div>
+        </div>
+      </div>
+      <div>
+        <h1 style="color:white">Nukes</h1>
+        <div id="nukeBar"></div>
+        <div id="bossHud">
+          <h1 style="color:white">Boss Health</h1>
+          <div id="bossBar"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+<script src="fixedWorldGameWithSeed.js"></script>    <!-- Include game.js as a JavaScript script file. -->
+
+</body>
+</html>
