@@ -1185,7 +1185,7 @@ function myPowerPelletTimer() {
   // Don't execute timer if Pacman already dead
   if (current != OFF_THE_BOARD) {
     gameMode = GAME_MODE_POWER_OFF;
-    if (numPowerPelletsEaten >= numPowerPellets) {
+    if (numPowerPelletsEaten >= numPowerPellets && bossUniverse) {
       gameMode = GAME_MODE_OVER;
       // Game Over stop all game components
       for (var i = 0; i < ghosts.length; i++) {
