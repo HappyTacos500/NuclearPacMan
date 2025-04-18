@@ -569,7 +569,7 @@ function resetBoard() {
   rabidGhostCount = 0;
   poisonGhostCount = 0;
   nukeBarFillPrecent = 0;
-  score += 100;
+  score += 200;
 
   // turn off PP if on
   if (myPowerPelletTimerVar != -1) {
@@ -1126,7 +1126,7 @@ function eatGhosts() {
         document.getElementById("bossBar").style.width = bossHP * (BOSS_BAR_WIDTH / (STARTING_BOSS_HP + ((currentUniverse / 5) - 1)));
         if (bossHP <= 0) {
           resetBoardUniverse();
-          score += 200;
+          score += 100;
         }
       }
 
