@@ -1120,6 +1120,7 @@ function eatGhosts() {
       // console.log("Found a ghost to Eat " + i);
 
       ghostsEaten++;
+      score += 10;
 
       if (bossUniverse) {
         bossHP -= 1;
