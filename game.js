@@ -1193,7 +1193,7 @@ function eatGhosts()
       // console.log("Found a ghost to Eat " + i);
 
       ghostsEaten++;
-      score += 10;
+      score += POINTS_PER_GHOST;
 
       if (bossUniverse) {
         bossHP -= 1;
